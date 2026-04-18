@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 public class TimeField : MonoBehaviour
@@ -47,6 +48,7 @@ public class TimeField : MonoBehaviour
 
         for (int i = 0; i < count; i++)
         {
+            Debug.Log("감지된 오브젝트 : " + hits[i].gameObject.name);
             if (hits[i].TryGetComponent<TimeFieldObject>(out var obj))
                 _objectsInField.Add(obj);
         }
@@ -54,7 +56,9 @@ public class TimeField : MonoBehaviour
         // 범위 진입 → Activated
         foreach (var obj in _objectsInField)
         {
+
             if (!_previousObjects.Contains(obj))
+                Debug.Log("EnterField 호출 : " + obj.gameObject.name);
                 obj.EnterField();
         }
 
