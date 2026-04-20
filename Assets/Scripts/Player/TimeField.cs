@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,77 +6,143 @@ public class TimeField : MonoBehaviour
     [Header("Field Settings")]
     [SerializeField] private float _fieldRadius = 3f;
     [SerializeField] private LayerMask _timeFieldLayer;
-    [SerializeField] private float _checkInterval = 0.1f;
+    [SerializeField] private int _maxDetectedObjects = 64;
 
     [Header("Debug")]
     [SerializeField] private bool _showFieldGizmo = true;
 
-    private readonly List<TimeFieldObject> _objectsInField = new();
-    private readonly List<TimeFieldObject> _previousObjects = new();
+    private readonly HashSet<TimeFieldObject> _objectsInField = new HashSet<TimeFieldObject>();
+    private readonly HashSet<TimeFieldObject> _previousObjects = new HashSet<TimeFieldObject>();
 
-    private void Start()
+    private Collider2D[] _hitBuffer;
+    private bool _isLocked;
+
+    public float FieldRadius => _fieldRadius;
+
+    private void Awake()
     {
-        StartCoroutine(CheckFieldCo());
+        _hitBuffer = new Collider2D[_maxDetectedObjects];
     }
 
-    private IEnumerator CheckFieldCo()
+    private void OnEnable()
     {
-        var waitInterval = new WaitForSeconds(_checkInterval);
+        RefreshFieldObjects();
+    }
 
-        while (true)
+    private void LateUpdate()
+    {
+        RefreshFieldObjects();
+    }
+
+    private void OnDisable()
+    {
+        ClearAllObjects();
+    }
+
+    public void ExpandField(float newRadius)
+    {
+        if (_isLocked)
         {
-            UpdateFieldObjects();
-            yield return waitInterval;
+            return;
         }
+
+        _fieldRadius = newRadius;
+
+        Physics2D.SyncTransforms();
+        RefreshFieldObjects();
     }
 
-    private void UpdateFieldObjects()
+    public void LockField()
+    {
+        _isLocked = true;
+
+        Physics2D.SyncTransforms();
+        RefreshFieldObjects();
+    }
+
+    private void RefreshFieldObjects()
     {
         _previousObjects.Clear();
-        _previousObjects.AddRange(_objectsInField);
+
+        foreach (TimeFieldObject obj in _objectsInField)
+        {
+            if (obj != null)
+            {
+                _previousObjects.Add(obj);
+            }
+        }
+
         _objectsInField.Clear();
 
-        var hits = new Collider2D[20];
         int count = Physics2D.OverlapCircleNonAlloc(
             transform.position,
             _fieldRadius,
-            hits,
+            _hitBuffer,
             _timeFieldLayer
         );
 
         for (int i = 0; i < count; i++)
         {
+<<<<<<< Updated upstream
             if (hits[i].TryGetComponent<TimeFieldObject>(out var obj))
+=======
+            Collider2D hit = _hitBuffer[i];
+
+            if (hit == null)
+            {
+                continue;
+            }
+
+            TimeFieldObject obj = hit.GetComponent<TimeFieldObject>();
+
+            if (obj != null)
+            {
+>>>>>>> Stashed changes
                 _objectsInField.Add(obj);
+            }
         }
 
-        // 범위 진입 → Activated
-        foreach (var obj in _objectsInField)
+        foreach (TimeFieldObject obj in _objectsInField)
         {
             if (!_previousObjects.Contains(obj))
+<<<<<<< Updated upstream
+=======
+            {
+>>>>>>> Stashed changes
                 obj.EnterField();
+            }
         }
 
-        // 범위 이탈 → Active
-        foreach (var obj in _previousObjects)
+        foreach (TimeFieldObject obj in _previousObjects)
         {
             if (!_objectsInField.Contains(obj))
+            {
                 obj.ExitField();
+            }
         }
     }
 
-    //등유 아이템으로 범위 확장
-    public void ExpandField(float newRadius)
+    private void ClearAllObjects()
     {
-        _fieldRadius = newRadius;
+        foreach (TimeFieldObject obj in _objectsInField)
+        {
+            if (obj != null)
+            {
+                obj.ExitField();
+            }
+        }
+
+        _objectsInField.Clear();
+        _previousObjects.Clear();
     }
 
-    public float FieldRadius => _fieldRadius;
-
-    //  디버그 기즈모 
     private void OnDrawGizmosSelected()
     {
-        if (!_showFieldGizmo) return;
+        if (!_showFieldGizmo)
+        {
+            return;
+        }
+
         Gizmos.color = new Color(1f, 0.9f, 0.3f, 0.3f);
         Gizmos.DrawSphere(transform.position, _fieldRadius);
         Gizmos.color = new Color(1f, 0.9f, 0.3f, 1f);

@@ -11,7 +11,9 @@ TagManager:
   - 
   - Water
   - UI
+  - Player
   - Ground
+<<<<<<< Updated upstream
   - 
   - 
   - 
@@ -19,6 +21,14 @@ TagManager:
   - 
   - 
   - 
+=======
+  - Enemy
+  - FallingObject
+  - Button
+  - Door
+  - BreakbleFloor
+  - Wall
+>>>>>>> Stashed changes
   - 
   - 
   - 
