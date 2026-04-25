@@ -8,17 +8,17 @@ TagManager:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Palyer
   - Water
   - UI
-  - Player
   - Ground
   - Enemy
   - FallingObject
   - Button
   - Door
   - BreakbleFloor
-  - Wall
+  - 
+  - 
   - 
   - 
   - 
@@ -40,4 +40,16 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Background
+    uniqueID: 4147978669
+    locked: 0
+  - name: Midgroud
+    uniqueID: 4224494765
+    locked: 0
+  - name: Default
+    uniqueID: 3014759889
+    locked: 0
+  - name: Foreground
+    uniqueID: 3307469305
     locked: 0
