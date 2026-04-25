@@ -13,15 +13,18 @@ public class TimeField : MonoBehaviour
 
     private readonly HashSet<TimeFieldObject> _objectsInField = new HashSet<TimeFieldObject>();
     private readonly HashSet<TimeFieldObject> _previousObjects = new HashSet<TimeFieldObject>();
-
     private Collider2D[] _hitBuffer;
     private bool _isLocked;
+    private bool _hasExpanded;
+
+    private TempPlayerCamera _playerCamera;
 
     public float FieldRadius => _fieldRadius;
 
     private void Awake()
     {
         _hitBuffer = new Collider2D[_maxDetectedObjects];
+        _playerCamera = FindObjectOfType<TempPlayerCamera>();
     }
 
     private void OnEnable()
@@ -37,17 +40,20 @@ public class TimeField : MonoBehaviour
     private void OnDisable()
     {
         ClearAllObjects();
+        _hasExpanded = false;
     }
 
     public void ExpandField(float newRadius)
     {
-        if (_isLocked)
+        if (_isLocked) return;
+
+        if (!_hasExpanded)
         {
-            return;
+            _hasExpanded = true;
+            _playerCamera?.TriggerTimeFieldPulse();
         }
 
         _fieldRadius = newRadius;
-
         Physics2D.SyncTransforms();
         RefreshFieldObjects();
     }
@@ -55,7 +61,6 @@ public class TimeField : MonoBehaviour
     public void LockField()
     {
         _isLocked = true;
-
         Physics2D.SyncTransforms();
         RefreshFieldObjects();
     }
@@ -63,13 +68,10 @@ public class TimeField : MonoBehaviour
     private void RefreshFieldObjects()
     {
         _previousObjects.Clear();
-
         foreach (TimeFieldObject obj in _objectsInField)
         {
             if (obj != null)
-            {
                 _previousObjects.Add(obj);
-            }
         }
 
         _objectsInField.Clear();
@@ -83,42 +85,24 @@ public class TimeField : MonoBehaviour
 
         for (int i = 0; i < count; i++)
         {
-<<<<<<< Updated upstream
-            if (hits[i].TryGetComponent<TimeFieldObject>(out var obj))
-=======
             Collider2D hit = _hitBuffer[i];
-
-            if (hit == null)
-            {
-                continue;
-            }
+            if (hit == null) continue;
 
             TimeFieldObject obj = hit.GetComponent<TimeFieldObject>();
-
             if (obj != null)
-            {
->>>>>>> Stashed changes
                 _objectsInField.Add(obj);
-            }
         }
 
         foreach (TimeFieldObject obj in _objectsInField)
         {
             if (!_previousObjects.Contains(obj))
-<<<<<<< Updated upstream
-=======
-            {
->>>>>>> Stashed changes
                 obj.EnterField();
-            }
         }
 
         foreach (TimeFieldObject obj in _previousObjects)
         {
             if (!_objectsInField.Contains(obj))
-            {
                 obj.ExitField();
-            }
         }
     }
 
@@ -127,9 +111,7 @@ public class TimeField : MonoBehaviour
         foreach (TimeFieldObject obj in _objectsInField)
         {
             if (obj != null)
-            {
                 obj.ExitField();
-            }
         }
 
         _objectsInField.Clear();
@@ -138,10 +120,7 @@ public class TimeField : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        if (!_showFieldGizmo)
-        {
-            return;
-        }
+        if (!_showFieldGizmo) return;
 
         Gizmos.color = new Color(1f, 0.9f, 0.3f, 0.3f);
         Gizmos.DrawSphere(transform.position, _fieldRadius);

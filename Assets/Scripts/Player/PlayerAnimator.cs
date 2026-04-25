@@ -12,7 +12,6 @@ public class PlayerAnimator : MonoBehaviour
 
     private static readonly int SpeedHash = Animator.StringToHash("Speed");
     private static readonly int VerticalVelocityHash = Animator.StringToHash("VerticalVelocity");
-
     private static readonly int IsGroundedHash = Animator.StringToHash("IsGrounded");
     private static readonly int IsFacingRightHash = Animator.StringToHash("IsFacingRight");
     private static readonly int IsRunningHash = Animator.StringToHash("IsRunning");
@@ -20,18 +19,16 @@ public class PlayerAnimator : MonoBehaviour
     private static readonly int IsFallingHash = Animator.StringToHash("IsFalling");
     private static readonly int IsWallSlidingHash = Animator.StringToHash("IsWallSliding");
     private static readonly int IsHardLandingHash = Animator.StringToHash("IsHardLanding");
-
     private static readonly int JumpTypeHash = Animator.StringToHash("JumpType");
     private static readonly int JumpTriggerHash = Animator.StringToHash("JumpTrigger");
 
     [Header("Animation Threshold")]
     [SerializeField] private float _moveThreshold = 0.1f;
-    [SerializeField] private float _jumpStartVelocityThreshold = 0.05f;
 
     private Animator _animator;
     private PlayerController _playerController;
 
-    private bool _wasGrounded;
+    private bool _wasJumping;
     private bool _wasWallSliding;
 
     private int _groundedJumpType = (int)JumpType.Ground;
@@ -42,7 +39,7 @@ public class PlayerAnimator : MonoBehaviour
         _animator = GetComponent<Animator>();
         _playerController = GetComponent<PlayerController>();
 
-        _wasGrounded = _playerController.IsGrounded;
+        _wasJumping = false;
         _wasWallSliding = _playerController.IsWallSliding;
     }
 
@@ -50,8 +47,8 @@ public class PlayerAnimator : MonoBehaviour
     {
         bool isGrounded = _playerController.IsGrounded;
         bool isWallSliding = _playerController.IsWallSliding;
-        bool isHardLanding = _playerController.IsHardLanding;
-        bool isFacingRight = _playerController.IsFacingRight;
+        bool isJumping = _playerController.IsJumping;
+        bool isAscending = _playerController.IsAscending;
 
         float moveSpeed = Mathf.Abs(_playerController.MoveInput);
         float verticalVelocity = _playerController.VerticalVelocity;
@@ -68,18 +65,14 @@ public class PlayerAnimator : MonoBehaviour
                 : (int)JumpType.Ground;
         }
 
-        bool didStartGroundJump =
-            _wasGrounded &&
-            !isGrounded &&
-            verticalVelocity > _jumpStartVelocityThreshold &&
-            !isWallSliding;
+        bool didStartJump = isJumping && !_wasJumping;
 
         bool didStartWallJump =
             _wasWallSliding &&
             !isWallSliding &&
-            verticalVelocity > _jumpStartVelocityThreshold;
+            verticalVelocity > 0f;
 
-        if (didStartGroundJump)
+        if (didStartJump && !isWallSliding)
         {
             _latchedJumpType = _groundedJumpType;
             _animator.ResetTrigger(JumpTriggerHash);
@@ -96,16 +89,16 @@ public class PlayerAnimator : MonoBehaviour
         _animator.SetFloat(VerticalVelocityHash, verticalVelocity);
 
         _animator.SetBool(IsGroundedHash, isGrounded);
-        _animator.SetBool(IsFacingRightHash, isFacingRight);
+        _animator.SetBool(IsFacingRightHash, _playerController.IsFacingRight);
         _animator.SetBool(IsRunningHash, isGroundRun);
-        _animator.SetBool(IsJumpingHash, _playerController.IsJumping);
+        _animator.SetBool(IsJumpingHash, isJumping || isAscending);
         _animator.SetBool(IsFallingHash, _playerController.IsFalling);
         _animator.SetBool(IsWallSlidingHash, isWallSliding);
-        _animator.SetBool(IsHardLandingHash, isHardLanding);
+        _animator.SetBool(IsHardLandingHash, _playerController.IsHardLanding);
 
         _animator.SetInteger(JumpTypeHash, _latchedJumpType);
 
-        _wasGrounded = isGrounded;
+        _wasJumping = isJumping;
         _wasWallSliding = isWallSliding;
     }
 
@@ -113,10 +106,7 @@ public class PlayerAnimator : MonoBehaviour
     {
         StopAllCoroutines();
 
-        if (_animator == null)
-        {
-            return;
-        }
+        if (_animator == null) return;
 
         _animator.ResetTrigger(JumpTriggerHash);
 
@@ -133,4 +123,5 @@ public class PlayerAnimator : MonoBehaviour
 
         _animator.SetInteger(JumpTypeHash, (int)JumpType.Ground);
     }
-}
+
+    }

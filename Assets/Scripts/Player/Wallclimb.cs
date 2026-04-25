@@ -6,21 +6,18 @@ using UnityEngine;
 [RequireComponent(typeof(Collider2D))]
 public class WallClimb : MonoBehaviour
 {
-    [Header("Wall Check")]
-    [SerializeField] private Transform _wallCheckLeft;
-    [SerializeField] private Transform _wallCheckRight;
-    [SerializeField] private float _wallCheckRadius = 0.14f;
-    [SerializeField] private float _autoWallCheckOffset = 0.03f;
-    [SerializeField] private float _wallCheckVerticalOffset = 0f;
+    [Header("Wall Detection")]
     [SerializeField] private LayerMask _wallLayer;
+    [SerializeField] private float _wallDetectDistance = 0.08f;
+    [SerializeField] private float _wallDetectInset = 0.02f;
 
     [Header("Wall Hold")]
     [SerializeField] private float _wallHoldGravityScale = 0f;
 
     [Header("Wall Jump")]
-    [SerializeField] private Vector2 _wallJumpForce = new Vector2(10f, 16f);
-    [SerializeField] private float _wallJumpLockTime = 0.2f;
-    [SerializeField] private float _sameWallBlockTime = 0.18f;
+    [SerializeField] private Vector2 _wallJumpForce = new Vector2(12f, 15f);
+    [SerializeField] private float _wallJumpLockTime = 0.12f;
+    [SerializeField] private float _sameWallBlockTime = 0.08f;
 
     private Rigidbody2D _rigidbody2D;
     private PlayerController _playerController;
@@ -37,7 +34,6 @@ public class WallClimb : MonoBehaviour
     private int _wallJumpDirection;
 
     private float _sameWallBlockTimer;
-
     private Coroutine _wallJumpLockCo;
 
     private void Awake()
@@ -103,50 +99,32 @@ public class WallClimb : MonoBehaviour
 
     private void UpdateWallDetection()
     {
-        Vector2 leftCheckPosition = GetWallCheckPosition(false);
-        Vector2 rightCheckPosition = GetWallCheckPosition(true);
-
-        _isTouchingLeftWall = false;
-        _isTouchingRightWall = false;
-
-        if (_blockedWallSide != -1)
-        {
-            _isTouchingLeftWall = Physics2D.OverlapCircle(
-                leftCheckPosition,
-                _wallCheckRadius,
-                _wallLayer
-            );
-        }
-
-        if (_blockedWallSide != 1)
-        {
-            _isTouchingRightWall = Physics2D.OverlapCircle(
-                rightCheckPosition,
-                _wallCheckRadius,
-                _wallLayer
-            );
-        }
+        _isTouchingLeftWall = _blockedWallSide != -1 && CheckWall(false);
+        _isTouchingRightWall = _blockedWallSide != 1 && CheckWall(true);
     }
 
-    private Vector2 GetWallCheckPosition(bool isRight)
+    private bool CheckWall(bool isRight)
     {
-        if (isRight && _wallCheckRight != null)
-        {
-            return _wallCheckRight.position;
-        }
-
-        if (!isRight && _wallCheckLeft != null)
-        {
-            return _wallCheckLeft.position;
-        }
-
         Bounds bounds = _bodyCollider.bounds;
-        float x = isRight
-            ? bounds.center.x + bounds.extents.x + _autoWallCheckOffset
-            : bounds.center.x - bounds.extents.x - _autoWallCheckOffset;
 
-        float y = bounds.center.y + _wallCheckVerticalOffset;
-        return new Vector2(x, y);
+        float originX = isRight
+            ? bounds.max.x - _wallDetectInset
+            : bounds.min.x + _wallDetectInset;
+
+        Vector2 origin = new Vector2(originX, bounds.center.y);
+        Vector2 size = new Vector2(0.02f, bounds.size.y * 0.9f);
+        Vector2 direction = isRight ? Vector2.right : Vector2.left;
+
+        RaycastHit2D hit = Physics2D.BoxCast(
+            origin,
+            size,
+            0f,
+            direction,
+            _wallDetectDistance,
+            _wallLayer
+        );
+
+        return hit.collider != null;
     }
 
     private void UpdateWallSlideState()
@@ -226,12 +204,7 @@ public class WallClimb : MonoBehaviour
 
     private void HandleWallJumpInput()
     {
-        if (_playerController == null)
-        {
-            return;
-        }
-
-        if (!_playerController.IsWallSliding)
+        if (_playerController == null || !_playerController.IsWallSliding)
         {
             return;
         }
@@ -251,7 +224,6 @@ public class WallClimb : MonoBehaviour
 
         _playerController.IsWallSliding = false;
         _playerController.CanMove = false;
-
         _rigidbody2D.gravityScale = _defaultGravityScale;
 
         _blockedWallSide = jumpedFromWallSide;
@@ -325,36 +297,21 @@ public class WallClimb : MonoBehaviour
 #if UNITY_EDITOR
     private void OnDrawGizmosSelected()
     {
-        Gizmos.color = Color.cyan;
-
-        Vector2 leftCheckPosition = _wallCheckLeft != null
-            ? (Vector2)_wallCheckLeft.position
-            : GetPreviewWallCheckPosition(false);
-
-        Vector2 rightCheckPosition = _wallCheckRight != null
-            ? (Vector2)_wallCheckRight.position
-            : GetPreviewWallCheckPosition(true);
-
-        Gizmos.DrawWireSphere(leftCheckPosition, _wallCheckRadius);
-        Gizmos.DrawWireSphere(rightCheckPosition, _wallCheckRadius);
-    }
-
-    private Vector2 GetPreviewWallCheckPosition(bool isRight)
-    {
         Collider2D collider2D = GetComponent<Collider2D>();
-
         if (collider2D == null)
         {
-            return transform.position;
+            return;
         }
 
         Bounds bounds = collider2D.bounds;
-        float x = isRight
-            ? bounds.center.x + bounds.extents.x + _autoWallCheckOffset
-            : bounds.center.x - bounds.extents.x - _autoWallCheckOffset;
 
-        float y = bounds.center.y + _wallCheckVerticalOffset;
-        return new Vector2(x, y);
+        Vector2 leftOrigin = new Vector2(bounds.min.x + _wallDetectInset, bounds.center.y);
+        Vector2 rightOrigin = new Vector2(bounds.max.x - _wallDetectInset, bounds.center.y);
+        Vector2 boxSize = new Vector2(0.02f, bounds.size.y * 0.9f);
+
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireCube(leftOrigin + Vector2.left * _wallDetectDistance, boxSize);
+        Gizmos.DrawWireCube(rightOrigin + Vector2.right * _wallDetectDistance, boxSize);
     }
 #endif
 }

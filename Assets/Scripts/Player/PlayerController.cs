@@ -22,7 +22,8 @@ public class PlayerController : MonoBehaviour
 
     [Header("Ground Check")]
     [SerializeField] private Transform _groundCheck;
-    [SerializeField] private float _groundCheckRadius = 0.1f;
+    [SerializeField] private Vector2 _groundCheckSize = new Vector2(0.45f, 0.05f);
+    [SerializeField] private float _groundCheckDistance = 0.1f;
     [SerializeField] private LayerMask _groundLayer;
     [SerializeField] private float _groundedVelocityThreshold = 0.05f;
 
@@ -38,6 +39,7 @@ public class PlayerController : MonoBehaviour
     public bool IsRunning { get; private set; }
     public bool IsFacingRight { get; private set; } = true;
     public bool IsJumping { get; private set; }
+    public bool IsAscending { get; private set; }
     public bool IsFalling { get; private set; }
     public bool IsHardLanding { get; private set; }
     public bool IsWallSliding { get; set; }
@@ -112,9 +114,7 @@ public class PlayerController : MonoBehaviour
         _isJumpHeld = Input.GetButton("Jump");
 
         if (Input.GetButtonDown("Jump"))
-        {
             _jumpBufferCounter = _jumpBufferTime;
-        }
     }
 
     private void CheckGrounded()
@@ -127,38 +127,34 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        bool isTouchingGround = Physics2D.OverlapCircle(
+        RaycastHit2D hit = Physics2D.BoxCast(
             _groundCheck.position,
-            _groundCheckRadius,
+            _groundCheckSize,
+            0f,
+            Vector2.down,
+            _groundCheckDistance,
             _groundLayer
         );
 
+        bool isTouchingGround = hit.collider != null;
         bool canBeGrounded = _rigidbody2D.velocity.y <= _groundedVelocityThreshold;
 
         IsGrounded = isTouchingGround && canBeGrounded;
 
         if (!_wasGrounded && IsGrounded)
-        {
             OnLanded();
-        }
 
         if (IsGrounded && !_hasJumped)
-        {
             _coyoteTimeCounter = _coyoteTime;
-        }
 
         if (_wasGrounded && !IsGrounded)
-        {
             _airPeakY = transform.position.y;
-        }
     }
 
     private void UpdateTimers()
     {
         if (!IsGrounded)
-        {
             _coyoteTimeCounter -= Time.deltaTime;
-        }
 
         _jumpBufferCounter -= Time.deltaTime;
     }
@@ -166,30 +162,21 @@ public class PlayerController : MonoBehaviour
     private void HandleDirection()
     {
         if (MoveInput > 0f)
-        {
             IsFacingRight = true;
-        }
         else if (MoveInput < 0f)
-        {
             IsFacingRight = false;
-        }
     }
 
     private void HandleJumpInput()
     {
-        if (IsWallSliding)
-        {
-            return;
-        }
+        if (IsWallSliding) return;
 
         if (IsJumping)
         {
             _jumpTimeCounter += Time.deltaTime;
 
             if (!_isJumpHeld || _jumpTimeCounter >= _maxJumpTime || _rigidbody2D.velocity.y <= 0f)
-            {
                 IsJumping = false;
-            }
         }
 
         bool canExecuteJump =
@@ -200,9 +187,7 @@ public class PlayerController : MonoBehaviour
             !_hasJumped;
 
         if (canExecuteJump)
-        {
             ExecuteJump();
-        }
     }
 
     private void ExecuteJump()
@@ -269,10 +254,7 @@ public class PlayerController : MonoBehaviour
             _jumpTimeCounter < _maxJumpTime &&
             !IsWallSliding;
 
-        if (!canApplyHold)
-        {
-            return;
-        }
+        if (!canApplyHold) return;
 
         _rigidbody2D.AddForce(Vector2.up * _jumpHoldForce, ForceMode2D.Force);
     }
@@ -283,25 +265,26 @@ public class PlayerController : MonoBehaviour
 
         if (_rigidbody2D.velocity.y < 0f)
         {
-            _rigidbody2D.velocity += Vector2.up * baseGravity * (_fallMultiplier - 1f) * Time.fixedDeltaTime;
+            _rigidbody2D.velocity += Vector2.up * baseGravity
+                                   * (_fallMultiplier - 1f) * Time.fixedDeltaTime;
         }
         else if (_rigidbody2D.velocity.y > 0f && !_isJumpHeld)
         {
-            _rigidbody2D.velocity += Vector2.up * baseGravity * (_lowJumpMultiplier - 1f) * Time.fixedDeltaTime;
+            _rigidbody2D.velocity += Vector2.up * baseGravity
+                                   * (_lowJumpMultiplier - 1f) * Time.fixedDeltaTime;
         }
     }
 
     private void TrackAirPeak()
     {
         if (!IsGrounded && transform.position.y > _airPeakY)
-        {
             _airPeakY = transform.position.y;
-        }
     }
 
     private void UpdateStateFlags()
     {
         VerticalVelocity = _rigidbody2D.velocity.y;
+        IsAscending = !IsGrounded && VerticalVelocity > 0f;
         IsFalling = !IsGrounded && VerticalVelocity < _fallThreshold;
     }
 
@@ -313,21 +296,15 @@ public class PlayerController : MonoBehaviour
         FallHeight = Mathf.Max(0f, _airPeakY - transform.position.y);
 
         if (FallHeight >= _hardLandThreshold)
-        {
             TriggerHardLanding();
-        }
         else
-        {
             FallHeight = 0f;
-        }
     }
 
     private void TriggerHardLanding()
     {
         if (_hardLandCo != null)
-        {
             StopCoroutine(_hardLandCo);
-        }
 
         _hardLandCo = StartCoroutine(HardLandingCo());
     }
@@ -348,11 +325,11 @@ public class PlayerController : MonoBehaviour
 #if UNITY_EDITOR
     private void OnDrawGizmosSelected()
     {
-        if (_groundCheck != null)
-        {
-            Gizmos.color = Color.green;
-            Gizmos.DrawWireSphere(_groundCheck.position, _groundCheckRadius);
-        }
+        if (_groundCheck == null) return;
+
+        Gizmos.color = IsGrounded ? Color.green : Color.red;
+        Vector3 center = _groundCheck.position + Vector3.down * _groundCheckDistance;
+        Gizmos.DrawWireCube(center, new Vector3(_groundCheckSize.x, _groundCheckSize.y, 0f));
     }
 #endif
 }
