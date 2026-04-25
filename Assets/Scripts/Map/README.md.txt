@@ -23,15 +23,17 @@
 
 ### FallingObject
 타입: ActiveInsideField
-- 타임필드 진입 시 waypoint 경로대로 이동
+- 타임필드 진입 시 중력 적용되어 낙하 시작
 - 타임필드 이탈 시 그 자리에서 정지
-- 마지막 waypoint 도착 시 삭제 또는 정지
+- Ground 레이어에 닿으면 설정된 딜레이 후 삭제 또는 유지
+- 기울어진 땅에서 물리 기반으로 자연스럽게 이동 가능
 
 | 인스펙터 | 설명 |
 |------|------|
-| Waypoints | 이동 경로 (순서대로 등록) |
-| MoveSpeed | 이동 속도 |
-| DestroyOnArrival | true: 도착 시 삭제 / false: 그 자리에 유지 |
+| GravityScale | 낙하 속도 |
+| FallDelay | 타임필드 진입 후 낙하 시작까지 대기 시간 |
+| DestroyOnArrival | true: Ground 닿으면 삭제 / false: 그 자리에 유지 |
+| DestroyDelay | 삭제까지 걸리는 시간 |
 
 ---
 
@@ -53,6 +55,7 @@
 타입: ActiveInsideField
 - Rigidbody2D 있는 오브젝트가 올라오면 눌림
 - 타임필드 안에서 눌린 상태면 연결된 Door 열림
+- 
 
 ---
 
@@ -68,6 +71,7 @@
 
 ### TilemapManager
 - 타일맵 레이어 관리
+
 
 | 레이어 | 설명 |
 |------|------|
