@@ -4,63 +4,58 @@ using UnityEngine;
 
 public class FallingObject : TimeFieldObject
 {
-    [SerializeField] private List<Transform> _waypoints;
-    [SerializeField] private float _moveSpeed;
+
+    [SerializeField] private float _gravityScale = 1f; //낙하 속도
+    [SerializeField] private float _fallDelay = 0.5f; //떨어지기 전 대기 속도
     [SerializeField] private bool _destroyOnArrival;
-    private int _currentIndex;
-    private bool _isMoving;
+    private bool _isFalling = false;
+    private Rigidbody2D _rb;
 
-
-
-    private void Update()
+    private void Awake()
     {
-        if(_isMoving)
-        {
-            if (_currentIndex >= _waypoints.Count) return;
-
-            Vector2 direction = (_waypoints[_currentIndex].position - transform.position).normalized;
-            transform.Translate(direction * _moveSpeed * Time.deltaTime);
-
-            RaycastHit2D hit = Physics2D.Raycast(transform.position, direction, 0.1f);
-            if(hit.collider != null)
-            {
-                BreakableFloor floor = hit.collider.GetComponent<BreakableFloor>();
-                if (floor != null)
-                    floor.Break();
-            }
-
-            float distance = Vector2.Distance(transform.position, _waypoints[_currentIndex].position);
-            if (distance < 0.1f)
-            {
-                _currentIndex++;
-                if (_currentIndex >= _waypoints.Count)
-                {
-                    if(_destroyOnArrival)
-                    {
-                        Destroy(gameObject);
-                    }
-                    else
-                    {
-                        _isMoving = false;
-                    }
-        
-                }
-            }
-        }
+        _rb = GetComponent<Rigidbody2D>();
+        _rb.gravityScale = 0;
+        _rb.isKinematic = true;
     }
 
-
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        
+        if(_destroyOnArrival && collision.gameObject.layer == LayerMask.NameToLayer("Ground"))
+        {
+            Destroy(gameObject, 1f);
+        }
+    }
 
     protected override void Activate()
     {
         base.Activate();
-        _isMoving = true;
+        Debug.Log("Activate 호출됨/ isFalling : "+_isFalling);
+        if(!_isFalling)
+            StartCoroutine(FallDelayCo());
 
     }
     protected override void Deactivate()
     {
         base.Deactivate();
-        _isMoving = false;
-    
+        Debug.Log("Deactivate 호출됨/ isFalling : " + _isFalling);
+        _isFalling = false;
+        _rb.isKinematic = true;
+        _rb.velocity = Vector2.zero;
+        _rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+
+    }
+
+    private IEnumerator FallDelayCo()
+    {
+        Debug.Log("코루틴 시작");
+        yield return new WaitForSeconds(_fallDelay);
+        Debug.Log("중력 켜짐");
+        _isFalling = true;
+        _rb.isKinematic = false;
+        _rb.gravityScale = _gravityScale;
+        Debug.Log("중력 적용: " + _rb.gravityScale);
+        _rb.constraints = RigidbodyConstraints2D.FreezePositionX | RigidbodyConstraints2D.FreezeRotation;
     }
 }
